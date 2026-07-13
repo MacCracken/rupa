@@ -1,0 +1,38 @@
+[package]
+name = "rupa"
+version = "${file:VERSION}"
+description = "rupa (रूप — form / appearance) — the sovereign AGNOS desktop theme-token core: two consolidated aesthetics (MUDRA the seal / SHANTA stillness), each dark + light, as logical 0xRRGGBB tokens (bg/panel/widget/line/ink/mute/faint/accent/alert/held + radius + font) with channel helpers. The ONE palette source that aethersafha (compositor chrome), dhancha (widget toolkit), and apps (crab, jalwa) all read. Packer-agnostic pure leaf — no framebuffer dep."
+license = "GPL-3.0-only"
+repository = "https://github.com/MacCracken/rupa"
+language = "cyrius"
+cyrius = "6.4.61"
+
+# rupa is a library — no CLI binary. `cyrius build` targets a smoke program that
+# links the full include chain to prove lib.cyr parses clean. Consumers
+# (aethersafha / dhancha / crab / jalwa) pull `dist/rupa.cyr` via a `[deps.rupa]`
+# entry pointing at a git tag, then pack tokens to their own framebuffer format.
+[build]
+entry = "programs/smoke.cyr"
+output = "build/rupa-smoke"
+
+# `[lib]` feeds `cyrius distlib` — one flat leaf module. rupa is a LEAF: no upstream
+# rupa deps (only the Cyrius stdlib below), no framebuffer dep (colors are logical
+# 0xRRGGBB; consumers pack via rupa_color_r/g/b).
+[lib]
+modules = [
+    "src/theme.cyr",
+]
+
+[deps]
+# Base stdlib set. rupa is pure integer Cyrius — the only real need is alloc
+# (rupa_theme_new); the rest carry the smoke + tcyr harness.
+stdlib = [
+    "string",
+    "fmt",
+    "alloc",
+    "io",
+    "vec",
+    "str",
+    "syscalls",
+    "assert",
+]

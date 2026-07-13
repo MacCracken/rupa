@@ -1,0 +1,25 @@
+# smoke — link the full rupa include chain + exercise the token API so the
+# concatenated dist bundle is proven to parse + run clean. Exit 0 = OK.
+include "src/lib.cyr"
+
+fn main(): i64 {
+    alloc_init();
+    # every ground constructs
+    if (rupa_theme_mudra_dark() == 0)   { return 1; }
+    if (rupa_theme_mudra_light() == 0)  { return 1; }
+    if (rupa_theme_shanta_dark() == 0)  { return 1; }
+    if (rupa_theme_shanta_light() == 0) { return 1; }
+    # a spot token + a channel helper
+    if (rupa_theme_accent(rupa_theme_mudra_dark()) != 0x00E5FF) { return 1; }
+    if (rupa_color_g(0x00E5FF) != 0xE5) { return 1; }
+    # registry + active default
+    if (rupa_theme_by_name("shanta-light") == 0) { return 1; }
+    if (rupa_theme_accent(rupa_theme_active()) != 0x00E5FF) { return 1; }
+
+    var banner = "rupa smoke: theme tokens linked + exercised clean\n";
+    syscall(1, 1, banner, strlen(banner));
+    return 0;
+}
+
+var exit_code = main();
+syscall(60, exit_code);

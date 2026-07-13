@@ -1,0 +1,27 @@
+# @public — rupa library include chain.
+# rupa (रूप — form / appearance) — the sovereign AGNOS desktop theme-token core.
+# The ONE source of the desktop's visual identity: aethersafha (compositor chrome),
+# dhancha (widget toolkit), and apps (crab, jalwa) all read the same MUDRA / SHANTA
+# tokens. rupa is a pure, dependency-light LEAF — logical 0xRRGGBB colors + channel
+# helpers, no framebuffer packer (each consumer packs to its own format).
+#
+# Stdlib includes live ONLY in this file — the domain module (theme.cyr) is flat,
+# which is what makes `cyrius distlib` (strip-include concatenation) produce a
+# compile-clean `dist/rupa.cyr`. Consumers of the dist supply their own stdlib.
+
+# ================================================================
+# Standard library
+# ================================================================
+include "lib/string.cyr"
+include "lib/fmt.cyr"
+include "lib/alloc.cyr"
+include "lib/vec.cyr"
+include "lib/str.cyr"
+include "lib/io.cyr"
+include "lib/syscalls.cyr"
+include "lib/assert.cyr"
+
+# ================================================================
+# rupa domain module — flat (one leaf module, no internal deps).
+# ================================================================
+include "src/theme.cyr"
