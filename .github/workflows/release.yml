@@ -58,8 +58,8 @@ jobs:
       - name: Build (link-check, DCE on)
         run: |
           mkdir -p build
-          CYRIUS_DCE=1 cyrius build programs/smoke.cyr build/sadish-smoke
-          echo "smoke: $(wc -c < build/sadish-smoke) bytes"
+          CYRIUS_DCE=1 cyrius build programs/smoke.cyr build/rupa-smoke
+          echo "smoke: $(wc -c < build/rupa-smoke) bytes"
 
       - name: Test (RUN suites)
         run: |
@@ -81,16 +81,16 @@ jobs:
       - name: Archive
         run: |
           TAG="${GITHUB_REF_NAME#v}"
-          git archive --format=tar.gz --prefix="sadish-${TAG}/" -o "sadish-${TAG}-src.tar.gz" HEAD
-          cp dist/sadish.cyr "sadish-${TAG}.cyr"
-          sha256sum sadish-*.tar.gz sadish-*.cyr > SHA256SUMS
+          git archive --format=tar.gz --prefix="rupa-${TAG}/" -o "rupa-${TAG}-src.tar.gz" HEAD
+          cp dist/rupa.cyr "rupa-${TAG}.cyr"
+          sha256sum rupa-*.tar.gz rupa-*.cyr > SHA256SUMS
 
       - uses: actions/upload-artifact@v4
         with:
           name: release-artifacts
           path: |
-            sadish-*.tar.gz
-            sadish-*.cyr
+            rupa-*.tar.gz
+            rupa-*.cyr
             SHA256SUMS
 
   release:
@@ -108,10 +108,10 @@ jobs:
           awk "/^## \\[${TAG}\\]/{found=1; next} /^## \\[/{if(found) exit} found{print}" CHANGELOG.md > /tmp/body.md
       - uses: softprops/action-gh-release@v2
         with:
-          name: "sadish ${{ github.ref_name }}"
+          name: "rupa ${{ github.ref_name }}"
           body_path: /tmp/body.md
           prerelease: ${{ startsWith(github.ref_name, '0.') || startsWith(github.ref_name, 'v0.') || contains(github.ref_name, '-rc.') || contains(github.ref_name, '-beta.') || contains(github.ref_name, '-alpha.') }}
           files: |
-            sadish-*.tar.gz
-            sadish-*.cyr
+            rupa-*.tar.gz
+            rupa-*.cyr
             SHA256SUMS

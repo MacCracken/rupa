@@ -33,7 +33,7 @@ jobs:
 
       - name: Resolve dependencies
         # `cyrius deps` copies the [deps].stdlib modules from the installed
-        # toolchain into lib/. sadish is a pure-Cyrius leaf — no external libs.
+        # toolchain into lib/. rupa is a pure-Cyrius leaf — no external libs.
         # Never symlink lib/ to a cyrius checkout (cross-repo writes).
         run: |
           rm -rf lib
@@ -73,21 +73,21 @@ jobs:
       - name: Verify dist bundle is in sync with src/
         run: |
           cyrius distlib
-          if ! git diff --quiet dist/sadish.cyr; then
-            echo "ERROR: dist/sadish.cyr is stale. Run 'cyrius distlib' and commit the result."
-            git --no-pager diff dist/sadish.cyr | head -40
+          if ! git diff --quiet dist/rupa.cyr; then
+            echo "ERROR: dist/rupa.cyr is stale. Run 'cyrius distlib' and commit the result."
+            git --no-pager diff dist/rupa.cyr | head -40
             exit 1
           fi
-          echo "dist/sadish.cyr matches src/"
+          echo "dist/rupa.cyr matches src/"
 
       - name: Build (link-check, DCE on)
         run: |
           mkdir -p build
-          CYRIUS_DCE=1 cyrius build programs/smoke.cyr build/sadish-smoke
-          echo "smoke: $(wc -c < build/sadish-smoke) bytes"
+          CYRIUS_DCE=1 cyrius build programs/smoke.cyr build/rupa-smoke
+          echo "smoke: $(wc -c < build/rupa-smoke) bytes"
 
       - name: Verify ELF
-        run: xxd -l 4 build/sadish-smoke | grep -q "7f45 4c46"
+        run: xxd -l 4 build/rupa-smoke | grep -q "7f45 4c46"
 
       - name: Test (RUN suites)
         # Every programs/*_test.cyr is a self-checking RUN test: it draws/acts,
