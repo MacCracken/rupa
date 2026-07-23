@@ -5,6 +5,13 @@ All notable changes to **rupa** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-07-23
+
+### Changed — cyrius pin 6.4.61 → 6.4.71
+
+Toolchain refresh across the draw stack. Materialised `lib/` re-synced (`cyrius lib sync --full`).
+No source change; build + tests green at the new pin.
+
 ## [0.1.0] - 2026-07-12 — the desktop theme-token core
 
 Extracted from `aethersafha/src/theme.cyr` when the theme gained its second consumer
