@@ -2,7 +2,7 @@
 
 **रूप — form / appearance**
 
-Version: 0.1.0
+Version: 0.1.2
 
 The sovereign **desktop theme-token core** for AGNOS, written in pure Cyrius. rupa is
 the ONE source of the desktop's visual identity: the compositor chrome
