@@ -19,17 +19,15 @@ fn main() {
     assert_eq(rupa_motion_grant_ms(RupaMotion.RU_MO_CALM), 260, "CALM settles");
     assert_eq(rupa_motion_is_periodic(RupaMotion.RU_MO_BUSY), 1, "BUSY is the periodic role");
     assert_eq(rupa_motion_is_periodic(RupaMotion.RU_MO_CALM), 0, "  ...and it is the only one");
-    assert_eq(rupa_motion_default_ease(RupaMotion.RU_MO_BUSY), RupaEase.RU_EASE_IN_OUT,
-              "periodic motion eases symmetrically, so a pulse returns to where it started");
-    assert_eq(rupa_motion_default_ease(RupaMotion.RU_MO_CALM), RupaEase.RU_EASE_OUT,
-              "anything arriving decelerates");
+    assert_eq(rupa_motion_default_ease(RupaMotion.RU_MO_BUSY), RupaEase.RU_EASE_IN_OUT, "periodic eases symmetrically");
+    assert_eq(rupa_motion_default_ease(RupaMotion.RU_MO_CALM), RupaEase.RU_EASE_OUT, "arrivals decelerate");
 
     test_group("motion — an app MAY override, within the envelope");
     assert_eq(rupa_motion_duration(RupaMotion.RU_MO_CALM, 0), 260, "no override -> the grant");
     assert_eq(rupa_motion_duration(RupaMotion.RU_MO_CALM, 400), 400, "a sane override is honoured");
     assert_eq(rupa_motion_ease(RupaMotion.RU_MO_CALM, 0 - 1), RupaEase.RU_EASE_OUT, "no ease override -> the grant");
-    assert_eq(rupa_motion_ease(RupaMotion.RU_MO_CALM, RupaEase.RU_EASE_LINEAR), RupaEase.RU_EASE_LINEAR,
-              "an ease override is honoured");
+    var lin = RupaEase.RU_EASE_LINEAR;
+    assert_eq(rupa_motion_ease(RupaMotion.RU_MO_CALM, lin), lin, "an ease override is honoured");
     # ⚠ Garbage is REFUSED back to the grant rather than clamped into a neighbouring curve: a caller
     # passing nonsense should get the system's answer, not a silently different one.
     assert_eq(rupa_motion_ease(RupaMotion.RU_MO_CALM, 99), RupaEase.RU_EASE_OUT, "an unknown ease falls back");
@@ -37,15 +35,13 @@ fn main() {
     test_group("motion — ⛔ THE FLASH BAND. This is the guard that exists to prevent harm.");
     # Periodic visual change between ~3 Hz and ~55 Hz is the photosensitive-epilepsy trigger band. A
     # widget "pulsing to show it is busy" at 10 Hz (100 ms) sits inside it. No override may go there.
-    assert_eq(rupa_motion_duration(RupaMotion.RU_MO_BUSY, 100), RU_MO_PERIOD_MIN_MS,
-              "a 10 Hz pulse is floored out of the seizure band");
-    assert_eq(rupa_motion_duration(RupaMotion.RU_MO_BUSY, 20), RU_MO_PERIOD_MIN_MS,
-              "  ...and so is 50 Hz");
-    assert_eq(rupa_motion_duration(RupaMotion.RU_MO_BUSY, 1), RU_MO_PERIOD_MIN_MS,
-              "  ...and an absurd one");
+    var busy = RupaMotion.RU_MO_BUSY;
+    assert_eq(rupa_motion_duration(busy, 100), RU_MO_PERIOD_MIN_MS, "10 Hz floored out of the band");
+    assert_eq(rupa_motion_duration(RupaMotion.RU_MO_BUSY, 20), RU_MO_PERIOD_MIN_MS, "  ...50 Hz too");
+    assert_eq(rupa_motion_duration(RupaMotion.RU_MO_BUSY, 1), RU_MO_PERIOD_MIN_MS, "  ...and an absurd one");
     # The floor must sit BELOW 3 Hz, i.e. a period of at least 334 ms. Asserted as arithmetic rather
     # than by eyeballing the constant, so lowering it fails here.
-    assert_eq(t_ge(RU_MO_PERIOD_MIN_MS, 334), 1, "the period floor is at or below 3 Hz — NEVER lower this");
+    assert_eq(t_ge(RU_MO_PERIOD_MIN_MS, 334), 1, "floor <= 3 Hz — NEVER lower");
     # ⛔ AND `rupa_motion_cycle` RE-FLOORS, because a caller can reach it without going through the
     # duration clamp. The guard must not depend on which door was used.
     var c_fast = rupa_motion_cycle(10, 5, RupaEase.RU_EASE_IN_OUT);
@@ -60,28 +56,24 @@ fn main() {
     assert_eq(rupa_motion_duration(0 - 1, 200), 0, "an unknown role grants nothing");
     assert_eq(rupa_motion_duration(RupaMotion.RU_MO_COUNT, 200), 0, "  ...including one past the enum");
     # ⚠ A zero duration is not "fast", it is ABSENT — a control with no acknowledgement reads as dead.
-    assert_eq(rupa_motion_duration(RupaMotion.RU_MO_QUICK, 1), RU_MO_DUR_MIN_MS, "an imperceptible override is floored");
+    assert_eq(rupa_motion_duration(RupaMotion.RU_MO_QUICK, 1), RU_MO_DUR_MIN_MS, "imperceptible override floored");
     # ⚠ And a very long one reads as HUNG — a bound on what the operator believes about the machine.
-    assert_eq(rupa_motion_duration(RupaMotion.RU_MO_CALM, 60000), RU_MO_DUR_MAX_MS, "a stall-length override is capped");
+    assert_eq(rupa_motion_duration(RupaMotion.RU_MO_CALM, 60000), RU_MO_DUR_MAX_MS, "stall-length override capped");
 
     test_group("motion — ⛔ REDUCED MOTION OUTRANKS THE APP");
     rupa_motion_set_reduced(1);
     assert_eq(rupa_motion_reduced(), 1, "the switch is on");
     # ⛔ THE INVERSION IS THE POINT: an override is a choice WITHIN the envelope, and "the operator
     # cannot tolerate motion" IS the envelope. Vestibular disorders make this harm, not preference.
-    assert_eq(rupa_motion_duration(RupaMotion.RU_MO_CALM, 400), 0,
-              "an app asking for 400 ms gets STILLNESS — it cannot re-enable what the system turned off");
+    assert_eq(rupa_motion_duration(RupaMotion.RU_MO_CALM, 400), 0, "app cannot re-enable stilled motion");
     assert_eq(rupa_motion_duration(RupaMotion.RU_MO_QUICK, 0), 0, "the grant is stilled too");
-    assert_eq(rupa_motion_ease(RupaMotion.RU_MO_CALM, RupaEase.RU_EASE_IN_OUT), RupaEase.RU_EASE_LINEAR,
-              "  ...and easing collapses");
+    assert_eq(rupa_motion_ease(RupaMotion.RU_MO_CALM, RupaEase.RU_EASE_IN_OUT), lin, "  ...easing collapses");
     # ⭐ BUT BUSY IS NOT SILENCED. Removing the only sign the system is working replaces motion with a
     # LIE ABOUT SYSTEM STATE — the operator cannot tell "working" from "hung". It slows; it does not stop.
-    assert_eq(rupa_motion_duration(RupaMotion.RU_MO_BUSY, 100), RU_MO_PERIOD_MAX_MS,
-              "BUSY still reports progress under reduced motion — slowed, never removed");
-    assert_eq(t_ge(rupa_motion_duration(RupaMotion.RU_MO_BUSY, 100), RU_MO_PERIOD_MIN_MS), 1,
-              "  ...and is still outside the flash band");
+    assert_eq(rupa_motion_duration(RupaMotion.RU_MO_BUSY, 100), RU_MO_PERIOD_MAX_MS, "BUSY slowed, never removed");
+    assert_eq(t_ge(rupa_motion_duration(busy, 100), RU_MO_PERIOD_MIN_MS), 1, "  ...still outside the band");
     rupa_motion_set_reduced(0);
-    assert_eq(rupa_motion_duration(RupaMotion.RU_MO_CALM, 400), 400, "turning it back off restores the override");
+    assert_eq(rupa_motion_duration(RupaMotion.RU_MO_CALM, 400), 400, "turning it off restores the override");
 
     test_group("motion — progress curves are monotone and hit both endpoints exactly");
     # ⚠ THE ENDPOINTS ARE THE PART THAT BITES. A curve that never reaches 255 leaves a widget
@@ -99,12 +91,12 @@ fn main() {
         prev = v;
         i = i + 5;
     }
-    assert_eq(mono, 1, "OUT never goes backwards — a widget must not stutter");
+    assert_eq(mono, 1, "OUT never goes backwards");
     # ⚠ EASE_OUT DECELERATES, so it must be AHEAD of linear in the first half. Asserting the shape and
     # not just monotonicity is what separates a real curve from a mislabelled linear one.
-    assert_eq(t_ge(rupa_motion_progress(200, 50, RupaEase.RU_EASE_OUT),
-                   rupa_motion_progress(200, 50, RupaEase.RU_EASE_LINEAR)), 1,
-              "OUT is ahead of linear early — it decelerates rather than accelerating");
+    var p_out = rupa_motion_progress(200, 50, RupaEase.RU_EASE_OUT);
+    var p_lin = rupa_motion_progress(200, 50, RupaEase.RU_EASE_LINEAR);
+    assert_eq(t_ge(p_out, p_lin), 1, "OUT leads linear early — it decelerates");
 
     test_group("motion — a cycle returns to where it started");
     # ⛔ A pulse whose end does not meet its start JUMPS every period — the visual artefact that reads
