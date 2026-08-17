@@ -21,6 +21,7 @@ output = "build/rupa-smoke"
 [lib]
 modules = [
     "src/theme.cyr",
+    "src/motion.cyr",
 ]
 
 [deps]

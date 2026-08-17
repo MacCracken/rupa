@@ -5,6 +5,50 @@ All notable changes to **rupa** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-08-17 — the system motion vocabulary, and the guards that make an override safe
+
+### Added — `src/motion.cyr`: roles the desktop grants, overridable per widget, clamped
+
+⭐ **The operator's ruling, implemented literally:** *"compositor grants the motion, apps can override
+per-widget, but lets guard against any impossible or highly destructive behaviors."*
+Four roles — `INSTANT` / `QUICK` / `CALM` / `BUSY` — plus three easings. ⚠ **Roles, not durations:** an
+app asking for "220 ms ease-out" has hardcoded a look; one asking for `CALM` inherits whatever the
+desktop decides CALM means and moves with everything else when that changes. Exactly why the colour
+tokens are named `accent`/`alert` and not hex.
+
+⚠ **IT LIVES HERE FOR THE SAME REASON THE COLOUR TOKENS DO.** The compositor's chrome, the dhancha
+toolkit and apps must move as ONE system. A vocabulary owned by the compositor could not be read by a
+client-side toolkit (a toolkit cannot depend on the compositor); one owned by dhancha would leave the
+compositor's own chrome inventing its own.
+
+⛔ **This file animates nothing.** Roles, override resolution, and "how far through at time t" as pure
+arithmetic. Drawing belongs to whoever owns pixels — which is what makes every guard testable on a host
+with no screen and no clock.
+
+### The guards — the substance, not the trim
+
+⛔⛔ **THE FLASH BAND.** Periodic visual change between roughly **3 Hz and 55 Hz** is the
+photosensitive-epilepsy trigger band, and a widget "pulsing to show it is busy" at 10 Hz sits inside it.
+Any periodic role is floored at `RU_MO_PERIOD_MIN_MS = 340` (~2.94 Hz, below the 3 Hz floor) and **no
+override may go under it**. `rupa_motion_cycle` re-floors independently, because a caller can reach it
+without passing through the duration clamp and the guard must not depend on which door was used.
+
+⛔⛔ **REDUCED MOTION OUTRANKS THE APP.** A per-widget override is a choice WITHIN the envelope; "the
+operator cannot tolerate motion" IS the envelope. Vestibular disorders make this a harm question, not a
+preference. ⚠ The clamp order is load-bearing — reduced is applied LAST, so an override that happens to
+land inside the envelope cannot defeat it.
+⭐ **But BUSY is never silenced**, only slowed: removing the sole indication that the system is working
+replaces motion with a **lie about system state**, leaving the operator unable to tell working from hung.
+
+⚠ Impossible values answer rather than divide: a zero or negative duration is FINISHED (255), not a
+divide-by-zero; negative elapsed is the start; an unknown role grants nothing; an unknown easing falls
+back to the grant rather than being clamped into a neighbouring curve. A zero duration is not "fast",
+it is ABSENT — a control with no acknowledgement reads as dead — so it is floored; a stall-length one is
+capped, because that bound is on what the operator believes about the machine.
+
+**Verification** — 39 assertions, and mutation-tested on both harm guards: removing the flash-band floor
+fails 3, and letting an app defeat reduced-motion fails 3.
+
 ## [0.1.2] - 2026-08-02
 
 ### Changed — cyrius pin 6.4.71 -> 6.5.5
