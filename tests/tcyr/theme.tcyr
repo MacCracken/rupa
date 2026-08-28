@@ -96,21 +96,21 @@ fn main() {
     var t_sd = rupa_theme_shanta_dark();
     var t_sl = rupa_theme_shanta_light();
     assert_eq(t_ge(rupa_contrast(rupa_theme_accent(t_md), rupa_theme_on_accent(t_md)), 450), 1,
-        "mudra-dark clears AA on its accent");
+      "mudra-dark clears AA on its accent");
     assert_eq(t_ge(rupa_contrast(rupa_theme_accent(t_ml), rupa_theme_on_accent(t_ml)), 450), 1,
-        "mudra-light clears AA");
+      "mudra-light clears AA");
     assert_eq(t_ge(rupa_contrast(rupa_theme_accent(t_sd), rupa_theme_on_accent(t_sd)), 450), 1,
-        "shanta-dark clears AA");
+      "shanta-dark clears AA");
     assert_eq(t_ge(rupa_contrast(rupa_theme_accent(t_sl), rupa_theme_on_accent(t_sl)), 450), 1,
-        "shanta-light clears AA");
+      "shanta-light clears AA");
 
     # ⛔ AND THE OBVIOUS ALTERNATIVE MUST FAIL, or the assertion above proves nothing. Painting the
     # theme's ORDINARY ink on the accent is exactly what a consumer does when it has no on-accent
     # token — and on the dark grounds that is 1.27:1 and 1.32:1, i.e. unreadable.
     assert_eq(t_ge(rupa_contrast(rupa_theme_accent(t_md), rupa_theme_ink(t_md)), 450), 0,
-        "mudra-dark: plain ink on accent FAILS AA");
+      "mudra-dark: plain ink on accent FAILS AA");
     assert_eq(t_ge(rupa_contrast(rupa_theme_accent(t_sd), rupa_theme_ink(t_sd)), 450), 0,
-        "shanta-dark: plain ink on accent FAILS AA");
+      "shanta-dark: plain ink on accent FAILS AA");
 
     # -- the contrast primitives -------------------------------------------
     assert_eq(rupa_luminance(0x000000), 0, "black has no luminance");
