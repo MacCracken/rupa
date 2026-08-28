@@ -43,7 +43,8 @@ enum RupaThemeOff {
     RU_TH_SZ     = 120;
 }
 
-fn rupa_theme_new(name, dark, bg, panel, widget, line, ink, mute, faint, accent, alert, held, radius, font, on_accent): i64 {
+fn rupa_theme_new(name, dark, bg, panel, widget, line, ink, mute, faint, accent, alert, held,
+  radius, font, on_accent): i64 {
     var t = alloc(RU_TH_SZ);
     if (t == 0) { return 0; }
     store64(t + RU_TH_NAME, name);
@@ -140,37 +141,37 @@ fn rupa_ink_on(fill, ink_a, ink_b): i64 {
 # MUDRA · Carbon (dark) — the out-of-box default. Carbon void, cyan verify seal.
 fn rupa_theme_mudra_dark(): i64 {
     return rupa_theme_new("mudra-dark", 1,
-    0x0B0C0E, 0x14161B, 0x1B1E24, 0x262A32,
-    0xE7E9EF, 0x8B92A0, 0x565C68,
-    0x00E5FF, 0xFF4D4D, 0xE9A23B, 0, 1000,
-    0x0B0C0E);                                   # on-accent: the carbon void. 12.72:1 on cyan.
+      0x0B0C0E, 0x14161B, 0x1B1E24, 0x262A32,
+      0xE7E9EF, 0x8B92A0, 0x565C68,
+      0x00E5FF, 0xFF4D4D, 0xE9A23B, 0, 1000,
+      0x0B0C0E);                                   # on-accent: the carbon void. 12.72:1 on cyan.
 }
 
 # MUDRA · Ledger (light) — the signed-artifact look on warm ledger paper.
 fn rupa_theme_mudra_light(): i64 {
     return rupa_theme_new("mudra-light", 0,
-    0xEFEADD, 0xF7F3E9, 0xFBF8F0, 0xD8D2C2,
-    0x17191E, 0x5E636D, 0x9A947F,
-    0x0090A6, 0xC21E1E, 0x946213, 0, 1000,
-    0x17191E);                                   # on-accent: the ink. 4.64:1 — the TIGHTEST of the four.
+      0xEFEADD, 0xF7F3E9, 0xFBF8F0, 0xD8D2C2,
+      0x17191E, 0x5E636D, 0x9A947F,
+      0x0090A6, 0xC21E1E, 0x946213, 0, 1000,
+      0x17191E);                                   # on-accent: the ink. 4.64:1 — the TIGHTEST of the four.
 }
 
 # SHANTA · Nightfall (dark) — warm void, gold firefly, sage. radius 14.
 fn rupa_theme_shanta_dark(): i64 {
     return rupa_theme_new("shanta-dark", 1,
-    0x14110C, 0x1E1A13, 0x251F17, 0x312A20,
-    0xECE4D4, 0xA99E8B, 0x6C6353,
-    0xE9C46A, 0xD98A5B, 0x8FB27A, 14, 1000,
-    0x14110C);                                   # on-accent: the warm void. 11.27:1 on gold.
+      0x14110C, 0x1E1A13, 0x251F17, 0x312A20,
+      0xECE4D4, 0xA99E8B, 0x6C6353,
+      0xE9C46A, 0xD98A5B, 0x8FB27A, 14, 1000,
+      0x14110C);                                   # on-accent: the warm void. 11.27:1 on gold.
 }
 
 # SHANTA · First Light (light) — rice-paper cream, warm gold, sage. radius 14.
 fn rupa_theme_shanta_light(): i64 {
     return rupa_theme_new("shanta-light", 0,
-    0xF2ECDD, 0xFBF6EA, 0xFFFFFF, 0xE4DCC9,
-    0x2B2620, 0x847B6C, 0xB3A88F,
-    0xC1963A, 0xB06A3E, 0x6F7D5F, 14, 1000,
-    0x2B2620);                                   # on-accent: the ink. 5.49:1 on the darker gold.
+      0xF2ECDD, 0xFBF6EA, 0xFFFFFF, 0xE4DCC9,
+      0x2B2620, 0x847B6C, 0xB3A88F,
+      0xC1963A, 0xB06A3E, 0x6F7D5F, 14, 1000,
+      0x2B2620);                                   # on-accent: the ink. 5.49:1 on the darker gold.
 }
 
 # ---- registry: resolve a theme by id (config-driven selection) ----
