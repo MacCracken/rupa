@@ -3,6 +3,8 @@
 # active-theme selector. Stdlib auto-included via cyrius.cyml.
 include "src/theme.cyr"
 
+fn t_ge(a, b): i64 { if (a >= b) { return 1; } return 0; }
+
 fn main() {
     alloc_init();
 
@@ -71,6 +73,56 @@ fn main() {
     assert_eq(rupa_theme_accent(rupa_theme_active()), 0x00E5FF, "active back to mudra-dark");
     assert_eq(rupa_theme_set_active_name("bogus"), 0, "set_active_name unknown = 0");
     assert_eq(rupa_theme_accent(rupa_theme_active()), 0x00E5FF, "active unchanged after bad name");
+
+    # -- on-accent: the ink that goes ON an accent fill (0.1.5) ------------
+    # ⭐ THE GATE THIS CLOSES: crab could fill a selected row with `accent` but had no token for the
+    # text on top of it, so a selected row could not carry guaranteed-legible text. Every other token
+    # names a colour you paint WITH; this one names the colour you paint ON TOP OF one.
+    test_group("rupa — on-accent, and the contrast that justifies it");
+    assert_eq(rupa_theme_on_accent(rupa_theme_mudra_dark()),   0x0B0C0E, "mudra-dark on-accent = carbon void");
+    assert_eq(rupa_theme_on_accent(rupa_theme_mudra_light()),  0x17191E, "mudra-light on-accent = ink");
+    assert_eq(rupa_theme_on_accent(rupa_theme_shanta_dark()),  0x14110C, "shanta-dark on-accent = warm void");
+    assert_eq(rupa_theme_on_accent(rupa_theme_shanta_light()), 0x2B2620, "shanta-light on-accent = ink");
+
+    # ⛔ THE POINT IS LEGIBILITY, SO ASSERT LEGIBILITY — not just that a field round-trips. Every
+    # ground must clear the WCAG AA floor for normal text (4.5:1) against its OWN accent. A future
+    # palette change that breaks one of these breaks the guarantee, and this is what says so.
+    # ⚠ The figures are `rupa_contrast`'s approximation (x100), which reads slightly HIGH against
+    # the true ^2.4 computation — the true ratios are 12.72 / 4.64 / 11.27 / 5.49, all of which also
+    # clear 4.5:1. The floor is asserted, not the exact number, so the approximation cannot silently
+    # become the specification.
+    var t_md = rupa_theme_mudra_dark();
+    var t_ml = rupa_theme_mudra_light();
+    var t_sd = rupa_theme_shanta_dark();
+    var t_sl = rupa_theme_shanta_light();
+    assert_eq(t_ge(rupa_contrast(rupa_theme_accent(t_md), rupa_theme_on_accent(t_md)), 450), 1, "mudra-dark clears AA on its accent");
+    assert_eq(t_ge(rupa_contrast(rupa_theme_accent(t_ml), rupa_theme_on_accent(t_ml)), 450), 1, "mudra-light clears AA");
+    assert_eq(t_ge(rupa_contrast(rupa_theme_accent(t_sd), rupa_theme_on_accent(t_sd)), 450), 1, "shanta-dark clears AA");
+    assert_eq(t_ge(rupa_contrast(rupa_theme_accent(t_sl), rupa_theme_on_accent(t_sl)), 450), 1, "shanta-light clears AA");
+
+    # ⛔ AND THE OBVIOUS ALTERNATIVE MUST FAIL, or the assertion above proves nothing. Painting the
+    # theme's ORDINARY ink on the accent is exactly what a consumer does when it has no on-accent
+    # token — and on the dark grounds that is 1.27:1 and 1.32:1, i.e. unreadable.
+    assert_eq(t_ge(rupa_contrast(rupa_theme_accent(t_md), rupa_theme_ink(t_md)), 450), 0, "mudra-dark: plain ink on accent FAILS AA");
+    assert_eq(t_ge(rupa_contrast(rupa_theme_accent(t_sd), rupa_theme_ink(t_sd)), 450), 0, "shanta-dark: plain ink on accent FAILS AA");
+
+    # -- the contrast primitives -------------------------------------------
+    assert_eq(rupa_luminance(0x000000), 0, "black has no luminance");
+    assert_eq(rupa_luminance(0xFFFFFF), 1000, "white is full permille");
+    # ⚠ Order-independence is a contract, not an accident: a caller must not have to know which
+    # colour is the fill and which is the ink.
+    assert_eq(rupa_contrast(0xFFFFFF, 0x000000), rupa_contrast(0x000000, 0xFFFFFF), "contrast is symmetric");
+    assert_eq(rupa_contrast(0x00FF00, 0x00FF00), 100, "a colour against itself is 1.00:1");
+    assert_eq(t_ge(rupa_contrast(0xFFFFFF, 0x000000), 2000), 1, "black on white is the maximum, >= 20:1");
+
+    # ⛔ THE HEURISTIC THIS REPLACES GETS MUDRA-LIGHT WRONG. A 299/587/114 luma against a 128
+    # threshold calls 0x0090A6 "dark" and picks the LIGHT ink — but the dark ink measures better
+    # (4.64:1 vs 3.57:1 true). `rupa_ink_on` compares real contrast, so it picks the dark ink.
+    assert_eq(rupa_ink_on(0x0090A6, 0x17191E, 0xFBF8F0), 0x17191E, "ink_on picks dark for the teal accent");
+    assert_eq(rupa_ink_on(0x00E5FF, 0xE7E9EF, 0x0B0C0E), 0x0B0C0E, "ink_on picks dark for bright cyan");
+    assert_eq(rupa_ink_on(0x0B0C0E, 0xE7E9EF, 0x14110C), 0xE7E9EF, "ink_on picks light on a dark fill");
+    # ⚠ Ties go to the first argument, so a caller's preferred ink wins when neither reads better.
+    assert_eq(rupa_ink_on(0x808080, 0x000000, 0x000000), 0x000000, "a tie goes to ink_a");
 
     return assert_summary();
 }

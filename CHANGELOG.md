@@ -5,6 +5,56 @@ All notable changes to **rupa** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2026-08-28 — `on-accent`: the ink that goes ON an accent fill
+
+### Added — `on-accent` token (unblocks crab M3 *#32* / the selected-row gate)
+
+Every other rupa token names a colour you paint **with**. `accent` was published without the one
+thing a consumer needs to *use* it: the ink legible on top of it. A selected row, a focused tab or a
+primary button could be filled but not labelled, so each consumer guessed — and guessed differently.
+
+- **`RU_TH_ON_ACCENT = 112`**, `RU_TH_SZ` **112 → 120**. Appended at the end, so every existing
+  offset is unchanged and a consumer reading raw `RU_TH_` offsets still reads the right fields.
+- **`rupa_theme_on_accent(t)`** accessor.
+- **`rupa_theme_new` takes a 15th parameter**, `on_accent`. ⚠ Signature change — but the only callers
+  stack-wide are rupa's own four theme constructors.
+- Per-ground values, each chosen against a true sRGB (^2.4) contrast computation:
+
+  | theme | accent | on-accent | contrast |
+  |---|---|---|---|
+  | mudra-dark | `0x00E5FF` | `0x0B0C0E` | 12.72:1 |
+  | mudra-light | `0x0090A6` | `0x17191E` | **4.64:1** (the tightest) |
+  | shanta-dark | `0xE9C46A` | `0x14110C` | 11.27:1 |
+  | shanta-light | `0xC1963A` | `0x2B2620` | 5.49:1 |
+
+  All four clear the WCAG AA floor for normal text (4.5:1), and the tests assert that floor rather
+  than the numbers, so the approximation below cannot become the specification.
+
+### Added — contrast primitives
+
+- **`rupa_luminance(c)`** — relative luminance in permille (0..1000).
+- **`rupa_contrast(a, b)`** — contrast ratio ×100, so `450` is the WCAG AA floor. Symmetric by
+  construction.
+- **`rupa_ink_on(fill, ink_a, ink_b)`** — picks whichever ink reads better on `fill`; ties go to
+  `ink_a`.
+
+⚠ **The gamma is squared, not ^2.4.** True sRGB linearization needs a `pow` this leaf will not carry.
+The approximation reads slightly high — ~13.68 where the true ratio is 12.72, ~5.20 where it is 4.64 —
+so it is for **choosing** an ink and catching a badly wrong pairing, not for quoting compliance.
+
+⛔ **The obvious heuristic is wrong, which is why these exist.** A 299/587/114 luma against a 128
+threshold calls MUDRA light's `0x0090A6` accent "dark" and picks the light ink — but the dark ink
+measures better (4.64:1 against 3.57:1). Comparing real contrast gets all four grounds right.
+
+### Testing
+
+- 58 assertions (was 42). The four on-accent pairings are asserted **against the AA floor**, and the
+  no-token fallback — painting the theme's ordinary `ink` on the accent — is asserted to **FAIL** it
+  (1.27:1 and 1.32:1 on the dark grounds), so the guarantee is not vacuous.
+- Mutation-proven five ways: mudra-light set to the heuristic's wrong answer (2 failures), `ink_on`'s
+  comparison inverted (3), `rupa_contrast` losing its symmetry (2), the red weight dropped from
+  luminance (2), and `on_accent` stored at `RU_TH_FONT`'s offset (5).
+
 ## [0.1.4] - 2026-08-17 — toolchain pin to 6.5.27
 
 ### Changed — `cyrius = "6.5.5"` -> **6.5.27**
