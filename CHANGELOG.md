@@ -5,6 +5,42 @@ All notable changes to **rupa** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2026-08-31 — the scrim token
+
+### Added — `rupa_theme_scrim` / `rupa_theme_scrim_a`
+
+⛔⛔ **A SCRIM IS A PALETTE DECISION, NOT A CONSUMER'S.** dhancha needed a modal backdrop for its
+0.9.23 sheet and had exactly two bad options: name a colour itself, or fake the dim with a scanline
+dither — and it shipped the dither. Neither is a decision a widget toolkit gets to make: **how far
+the page recedes behind a dialogue is a palette question**, and it differs between a carbon void and
+rice paper. crab's ADR 0001 forbids the app from naming colours; the same argument reaches one layer
+further up.
+
+⚠ **TWO FIELDS, NOT ONE.** A scrim is a colour **and** a coverage. Packing the alpha into the colour
+would collide with sadish's legacy `sd_alpha_of` rule, where a 0 byte means **opaque**.
+
+| theme | scrim | alpha |
+|---|---|---:|
+| MUDRA dark | the carbon void `0x0B0C0E` | 178 (70 %) |
+| SHANTA dark | the warm void `0x14110C` | 178 (70 %) |
+| MUDRA light | its **ink** `0x17191E` | 102 (40 %) |
+| SHANTA light | its **ink** `0x2B2620` | 102 (40 %) |
+
+⛔ **The light grounds dim with their INK and at far lower alpha.** The void at 70 % over rice paper
+would black the page out rather than let it recede — and that asymmetry is the token's entire
+justification. The suite asserts `dark_alpha > light_alpha` in both families, so if they ever
+equalise one of the two is wrong.
+
+⚠ **Appended at the end of the record**, for the same reason `on_accent` was at 0.1.5: every offset
+above is unchanged, so a consumer reading raw `RU_TH_` offsets against an older build still reads the
+right fields. Only `RU_TH_SZ` grows (120 → 136), and rupa owns the allocation.
+
+### Changed — toolchain pin 6.5.35 → 6.5.36
+
+### Verified
+
+**58 → 72** assertions, 0 failed.
+
 ## [0.1.5] - 2026-08-28 — `on-accent`: the ink that goes ON an accent fill
 
 ### Added — `on-accent` token (unblocks crab M3 *#32* / the selected-row gate)

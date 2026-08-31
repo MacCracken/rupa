@@ -130,6 +130,35 @@ fn main() {
     # ⚠ Ties go to the first argument, so a caller's preferred ink wins when neither reads better.
     assert_eq(rupa_ink_on(0x808080, 0x000000, 0x000000), 0x000000, "a tie goes to ink_a");
 
+    test_group("rupa — 0.1.6: the SCRIM token");
+    # ⛔⛔ A SCRIM IS A PALETTE DECISION, NOT A CONSUMER'S. dhancha needed a modal backdrop and had
+    # two bad options: name a colour itself, or fake the dim with a scanline dither (which 0.9.23
+    # shipped). How far the page recedes behind a dialogue differs between a carbon void and rice
+    # paper, so it belongs here.
+    # ⚠ The earlier groups already bound `md` / `ml` / `sl`; reuse them rather than shadowing.
+    var scd = rupa_theme_shanta_dark();
+    # ⚠ TWO FIELDS, NOT ONE — a scrim is a colour AND a coverage.
+    assert_eq(rupa_theme_scrim(md), 0x0B0C0E, "MUDRA dark dims with its own void");
+    assert_eq(rupa_theme_scrim_a(md), 178, "...at 70%");
+    assert_eq(rupa_theme_scrim(scd), 0x14110C, "SHANTA dark dims with the warm void");
+    assert_eq(rupa_theme_scrim_a(scd), 178, "...also at 70%");
+    # ⛔ THE LIGHT GROUNDS DIM WITH THEIR INK AND AT A FAR LOWER ALPHA. The void at 70% over rice
+    # paper would black the page out rather than let it recede — which is the whole reason this is a
+    # per-theme token and not one number in the toolkit.
+    assert_eq(rupa_theme_scrim(ml), 0x17191E, "MUDRA light dims with its INK, not its void");
+    assert_eq(rupa_theme_scrim_a(ml), 102, "...at 40%, far lighter than the dark grounds");
+    assert_eq(rupa_theme_scrim(sl), 0x2B2620, "SHANTA light likewise");
+    assert_eq(rupa_theme_scrim_a(sl), 102, "...at 40%");
+    # ⚠ Every ground must actually dim — a 0 alpha would be a token that does nothing.
+    assert(rupa_theme_scrim_a(md) > 0, "every theme's scrim actually covers something");
+    assert(rupa_theme_scrim_a(ml) > 0, "...including the light ones");
+    assert(rupa_theme_scrim_a(md) <= 255, "...and none exceeds full coverage");
+    assert(rupa_theme_scrim_a(ml) <= 255, "...on either ground");
+    # ⛔ AND A DARK GROUND DIMS HARDER THAN A LIGHT ONE. If these ever equalise, one of the two is
+    # wrong — the asymmetry is the token's entire justification.
+    assert(rupa_theme_scrim_a(md) > rupa_theme_scrim_a(ml), "a dark ground dims harder than a light one");
+    assert(rupa_theme_scrim_a(scd) > rupa_theme_scrim_a(sl), "...in both families");
+
     return assert_summary();
 }
 
