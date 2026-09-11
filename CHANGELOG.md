@@ -5,6 +5,14 @@ All notable changes to **rupa** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.7] - 2026-09-11
+
+### Changed
+
+- **Toolchain `6.5.36` → `6.6.2`.** No source change. Zero compiler rejections and
+  zero fail-open sites; the four `callptr` sites reach no pair-returning target.
+  **114 assertions** pass unchanged.
+
 ## [0.1.6] - 2026-08-31 — the scrim token
 
 ### Added — `rupa_theme_scrim` / `rupa_theme_scrim_a`
