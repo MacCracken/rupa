@@ -41,22 +41,40 @@ jobs:
           cyrius deps
 
       - name: Lint
-        # Hard gate: any `warn` line (warning or untracked-deferral) fails CI.
+        # Hard gate: a warning, an untracked deferral, or a cyrlint failure fails CI.
+        # ⚠ Three signals, because none covers the others (measured on 6.6.6): plain
+        # `cyrius lint` exits 0 even with warnings and untracked deferrals, and prints
+        # the latter as `deferral line N:`, which a `warn` grep never sees;
+        # `--strict-deferrals` exits 2 on an untracked deferral but still 0 on warnings;
+        # and a file cyrlint cannot read prints no `warn` line — only its exit code says
+        # so. A deferral cross-referenced to a CHANGELOG/issue/roadmap entry prints
+        # nothing and passes.
         run: |
           fail=0
           for f in src/*.cyr programs/*.cyr tests/tcyr/*.tcyr; do
             [ -e "$f" ] || continue
-            out=$(cyrius lint "$f" 2>&1 || true)
+            rc=0
+            out=$(cyrius lint "$f" --strict-deferrals 2>&1) || rc=$?
             echo "$out"
             if echo "$out" | grep -qE '^[[:space:]]*warn '; then
               echo "lint: warnings in $f"; fail=1
             fi
+            if echo "$out" | grep -qE '^[[:space:]]*deferral '; then
+              echo "lint: untracked deferral in $f"; fail=1
+            fi
+            if [ "$rc" -ne 0 ]; then
+              echo "lint: cyrlint exited $rc on $f"; fail=1
+            fi
           done
-          [ $fail -eq 0 ] || { echo "lint: warnings present"; exit 1; }
+          [ $fail -eq 0 ] || { echo "lint: gate failed"; exit 1; }
 
       - name: Format check
-        # cyrius fmt reports via EXIT CODE with --check (0 = clean); file goes
-        # BEFORE the flag.
+        # cyrius fmt reports via EXIT CODE with --check (0 = clean). Flag position
+        # stopped mattering at cyrius 6.6.5 (one argument parser for every command).
+        # ⚠ --check accepts a 2- or 4-space continuation indent per open paren, where
+        # `cyrius fmt` writes 2 — the leniency rupa asked for at 0.1.3 (cyrius v6.5.28,
+        # issues/archived/2026-08-17-fmt-check-rejects-wrapped-calls.md). So a file can
+        # pass here and still move under `cyrius fmt` (all six were canonical at 0.1.8).
         run: |
           fail=0
           for f in src/*.cyr programs/*.cyr tests/tcyr/*.tcyr; do
@@ -70,15 +88,25 @@ jobs:
       - name: Vet
         run: cyrius vet programs/smoke.cyr
 
-      - name: Verify dist bundle is in sync with src/
+      - name: Verify dist/ is current (bundle + dep sidecar)
+        # `cyrius distlib --check` regenerates into a temp file and byte-compares BOTH
+        # dist/rupa.cyr and dist/rupa.deps with what is committed, writing nothing, and
+        # fails when either is missing. The step it replaced ran `distlib` and then
+        # `git diff --quiet dist/rupa.cyr`: it never looked at the sidecar consumers
+        # resolve their stdlib from, and a deleted or untracked file has no diff.
+        # ⛔ --check SKIPS distlib's bundle self-compile, so plain `cyrius distlib` runs
+        # after it (setu's shape, 0.8.11). Keep this order: plain distlib rewrites dist/,
+        # and --check would then find nothing stale.
         run: |
-          cyrius distlib
-          if ! git diff --quiet dist/rupa.cyr; then
-            echo "ERROR: dist/rupa.cyr is stale. Run 'cyrius distlib' and commit the result."
-            git --no-pager diff dist/rupa.cyr | head -40
+          if ! cyrius distlib --check; then
+            cyrius distlib > /dev/null 2>&1 || true
+            echo "ERROR: dist/ is stale. Run 'cyrius distlib' and commit dist/ exactly as it writes it."
+            git status --short dist/
+            git --no-pager diff dist/ | head -60
             exit 1
           fi
-          echo "dist/rupa.cyr matches src/"
+          cyrius distlib
+          echo "dist/ matches src/"
 
       - name: Build (link-check, DCE on)
         run: |
@@ -88,6 +116,12 @@ jobs:
 
       - name: Verify ELF
         run: xxd -l 4 build/rupa-smoke | grep -q "7f45 4c46"
+
+      - name: Run smoke
+        # The smoke returns 1 on any theme-token or motion mismatch. Building it proves
+        # the chain links; only running it proves the chain answers. Until 0.1.8 CI built
+        # it and never ran it (it is not a programs/*_test.cyr), so no check in it ran.
+        run: ./build/rupa-smoke
 
       - name: Test (RUN suites)
         # Every programs/*_test.cyr is a self-checking RUN test: it draws/acts,

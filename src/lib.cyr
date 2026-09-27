@@ -5,9 +5,9 @@
 # tokens. rupa is a pure, dependency-light LEAF — logical 0xRRGGBB colors + channel
 # helpers, no framebuffer packer (each consumer packs to its own format).
 #
-# Stdlib includes live ONLY in this file — the domain module (theme.cyr) is flat,
-# which is what makes `cyrius distlib` (strip-include concatenation) produce a
-# compile-clean `dist/rupa.cyr`. Consumers of the dist supply their own stdlib.
+# Stdlib includes live ONLY in this file — the domain modules (theme.cyr, motion.cyr)
+# are flat, which is what makes `cyrius distlib` (strip-include concatenation) produce
+# a compile-clean `dist/rupa.cyr`. Consumers of the dist supply their own stdlib.
 
 # ================================================================
 # Standard library
@@ -22,6 +22,10 @@ include "lib/syscalls.cyr"
 include "lib/assert.cyr"
 
 # ================================================================
-# rupa domain module — flat (one leaf module, no internal deps).
+# rupa domain modules — flat (no internal deps), in cyrius.cyml [lib] order.
+# ⚠ Every [lib] module belongs here too: this is the chain the smoke build
+# compiles. motion.cyr was bundled from 0.1.3 but missing here until 0.1.8, so
+# the smoke never compiled it — only its own suite and distlib's self-compile did.
 # ================================================================
 include "src/theme.cyr"
+include "src/motion.cyr"

@@ -1,5 +1,5 @@
-# smoke — link the full rupa include chain + exercise the token API so the
-# concatenated dist bundle is proven to parse + run clean. Exit 0 = OK.
+# smoke — link the full rupa include chain (theme + motion) + exercise both APIs so
+# the concatenated dist bundle is proven to parse + run clean. Exit 0 = OK.
 include "src/lib.cyr"
 
 fn main(): i64 {
@@ -15,8 +15,13 @@ fn main(): i64 {
     # registry + active default
     if (rupa_theme_by_name("shanta-light") == 0) { return 1; }
     if (rupa_theme_accent(rupa_theme_active()) != 0x00E5FF) { return 1; }
+    # motion: a granted role, the flash-band floor holding against an override, and a
+    # zero duration answering FINISHED rather than dividing
+    if (rupa_motion_grant_ms(RupaMotion.RU_MO_CALM) != 260) { return 1; }
+    if (rupa_motion_duration(RupaMotion.RU_MO_BUSY, 100) != RU_MO_PERIOD_MIN_MS) { return 1; }
+    if (rupa_motion_progress(0, 50, RupaEase.RU_EASE_LINEAR) != 255) { return 1; }
 
-    var banner = "rupa smoke: theme tokens linked + exercised clean\n";
+    var banner = "rupa smoke: theme + motion linked + exercised clean\n";
     syscall(1, 1, banner, strlen(banner));
     return 0;
 }

@@ -5,6 +5,111 @@ All notable changes to **rupa** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2026-09-26 — toolchain 6.6.6, and four CI gates that could not fail
+
+### Changed — toolchain `6.6.2` → `6.6.6`
+
+- **No source change for the toolchain.** Both bundled modules and both suites are untouched; the
+  edits to `src/lib.cyr` and `programs/smoke.cyr` are the gate fixes below, and this section's
+  numbers are measured without them. **114 assertions** (42 motion + 72 theme) pass unchanged;
+  `lint` 0 warnings, `vet` clean, `distlib --check` current, and **0 of 6** files move under the
+  6.6.6 formatter — measured by formatting in place and diffing, not by `fmt --check` alone.
+- **Zero compiler rejections and zero fail-open sites.** No build, suite, `vet` or `distlib` run
+  prints a warning or error. The range's fail-open classes have no site here: a pre-6.6.4
+  `cyrius.lock` failing open for one resolve (rupa has no lock), a `private` impl method's forward
+  call (no `private`, no `impl`), and `cyrlint --exit-with-count` over several files dropping a read
+  error (CI lints one file per call, without the flag). The four `callptr` sites — the allocator
+  vtable's `alloc_via` / `realloc_via` / `free_via` / `reset_via` in `lib/alloc.cyr`, byte-identical
+  to 6.6.2's — still reach no pair-returning target: every function any `allocator_new` in the
+  closure installs is declared `: i64`. ⚠ The closure DOES carry one pair-returning type — `Str`,
+  16 B, `lib/str.cyr`, unchanged — and it passes 6.6.6's new 9–16 B return-shape check without a
+  diagnostic. rupa's own code declares no struct and makes no indirect call.
+- ⚠ **The artifact changed**, and would have with no stdlib change at all: 6.6.5 pads every call
+  emitted at odd expression-stack depth to keep `rsp` 16-byte aligned, so no binary is
+  byte-comparable across it by construction (rupa calls no C or SSE code, so the misalignment it
+  fixes never bit here). Smoke **80,904 → 85,192 B** plain, **19,464 → 19,656 B** under
+  `CYRIUS_DCE=1`.
+- ⭐ **Both cross-target builds are now diagnostic-free.** `--agnos` no longer warns
+  `undefined function '_agnos_getenv'`: 6.6.6's `lib/io.cyr` includes `args_agnos.cyr` directly,
+  where 6.6.2 forward-referenced it and `getenv` trapped unless something else pulled the peer in.
+  `--aarch64` no longer flags `raw syscall 32` in `lib/io.cyr`: 6.6.4 moved `xflock` onto
+  `SYS_FLOCK` (the x86 number, renumbered by ESYSXLAT), ending a false positive on correct code.
+  rupa calls neither `getenv` nor `flock`; both were stdlib noise in every cross build. Plain
+  sizes: agnos 84,976 → 89,144 B; aarch64 199,648 → 265,336 B, 86 % of that growth unreachable
+  stdlib (166,972 → 223,396 B) — `CYRIUS_DCE=1` does not shrink aarch64 output at either pin.
+
+### Changed — `lib/` re-resolved from the 6.6.6 stdlib
+
+- `rm -rf lib && cyrius deps`, as CI does: **21 → 23 files**, each byte-equal to
+  `~/.cyrius/versions/6.6.6/lib/`. Joining: `alloc_cx.cyr` (now included by `alloc.cyr`) and
+  `args_agnos.cyr` (by `io.cyr`, agnos target only). 14 of the 21 carried files changed; `alloc_agnos`,
+  `alloc_macos`, `alloc_windows`, `args_macos`, `atomic`, `result` and `str` did not.
+- ⚠ **`lib/` is not what gets compiled.** MEASURED at both pins: with `lib/fmt.cyr` deliberately
+  corrupted, `build`, `test`, `lint`, `vet`, `check` and `distlib --check` all succeed and the smoke
+  binary is byte-identical (85,192 B at 6.6.6, 80,904 B at 6.6.2). For this stdlib-only chain the
+  stdlib comes from `~/.cyrius/versions/<pin>/lib` — **the pin is the update**; re-resolving `lib/`
+  keeps the local mirror truthful. No `cyrius.lock` is written for a stdlib-only manifest.
+- `[deps].stdlib` unchanged: no target needs a new module at 6.6.6.
+
+### Unchanged — `dist/`
+
+- `dist/rupa.cyr` differs only in its `# Version:` stamp (433 lines, 23,169 B), and
+  `dist/rupa.deps` is byte-identical — the same **8** leaves. ⚠ 6.6.6 made `lib/string.cyr` include
+  `alloc` itself, which is why rekha's sidecar dropped `alloc`; rupa's `src/lib.cyr` includes `alloc`
+  directly and the sidecar is the declared list plus an include scan, so a consumer resolves exactly
+  what it did at 0.1.7. **No new toolchain floor**: the bundle's code is 0.1.7's.
+
+### Fixed — four CI gates that passed the defects they exist to catch
+
+Found while auditing the bump, and each fix PROVEN rather than argued: the defect was planted in a
+copy of the tree, and each version's own `ci.yml`, include chain and smoke were run — the steps'
+exact `run:` scripts under GitHub's `bash -e`, both at 6.6.6.
+
+| planted defect | 0.1.7 CI | 0.1.8 CI |
+|---|---|---|
+| an untracked `TODO` | **passes** | fails at Lint |
+| a file cyrlint fails on (unreadable: exit 1) | **passes** | fails at Lint |
+| `dist/rupa.deps` missing its `fmt` leaf, committed | **passes** | fails at dist |
+| `dist/rupa.deps` deleted, committed | **passes** | fails at dist |
+| a syntax error in `src/motion.cyr` | **passes** the smoke build | fails at Build |
+| the flash-band floor removed from `rupa_motion_duration` | **passes** the smoke steps | fails at Run smoke |
+| mudra-dark's accent `0x00E5FF` → `0x00E5FE` | **passes** the smoke steps | fails at Run smoke |
+
+The controls did not move: a lint warning, a stale bundle and a bundle that does not compile fail
+under both; a `TODO` cross-referenced to a CHANGELOG entry passes under both; the clean tree passes
+every build-job step under both. ⚠ The last two rows were never unguarded VALUES — the suites fail
+both under either CI. What was false was the smoke's claim to run.
+
+- **Lint.** ⛔ The step promised *"any `warn` line (warning or untracked-deferral) fails CI"*. cyrlint
+  prints an untracked deferral as `deferral line N:`, which the `warn` grep never matched, and plain
+  `cyrius lint` exits 0 either way; `|| true` also discarded the only sign of a file it cannot read
+  (exit 1, no `warn` line). Now `--strict-deferrals` (exit 2 on an untracked deferral; forwarded
+  since 6.6.5), a `deferral` grep, and the exit code. ⚠ Three signals, because `--strict-deferrals`
+  still exits 0 on a warning.
+- **dist.** The step diffed `dist/rupa.cyr` only — the sidecar consumers resolve their stdlib from was
+  never compared, and a deleted file has no diff. Now `cyrius distlib --check` (bundle and sidecar,
+  byte-compared, nothing written), then plain `cyrius distlib` — setu 0.8.11's shape. ⛔ MEASURED why
+  the second line stays: on a bundle that does not compile, committed as distlib wrote it, `--check`
+  exits **0** and only plain distlib's self-compile exits 1. The old step had that coverage by
+  accident; `--check` alone would have dropped it.
+- **The smoke never compiled `src/motion.cyr`.** Bundled since 0.1.3, but `src/lib.cyr` — the chain the
+  smoke builds — never included it, so only its own suite and distlib's self-compile compiled it. It
+  is included now, and the smoke checks three contracts the suite already pins: CALM is granted
+  260 ms, a 10 Hz BUSY override floors to `RU_MO_PERIOD_MIN_MS`, a zero duration answers FINISHED.
+  Smoke 85,192 → **89,392 B** plain, 19,656 → **19,760 B** under `CYRIUS_DCE=1`; both cross builds stay
+  diagnostic-free. ⚠ `vet` is unaffected either way: it lists only the scanned program's direct
+  include (`OK src/lib.cyr`, 1 dep), before and after.
+- **CI built the smoke and never ran it.** It is not a `programs/*_test.cyr`, so none of its
+  `return 1` checks, theme or motion, ever executed in CI. A `Run smoke` step runs it.
+- The format step's comment said the file must come before `--check`; flag position stopped mattering
+  at 6.6.5. It now also records that `--check` accepts a 2- or 4-space continuation indent where
+  `fmt` writes 2 — the leniency rupa itself asked for at 0.1.3 (cyrius v6.5.28) — so passing `--check`
+  is not the same as being canonical. All six files are canonical (measured, above).
+
+### Fixed — the README's version line
+
+- `README.md`'s `Version:` line had read `0.1.2` since 0.1.2; it now reads `0.1.8`.
+
 ## [0.1.7] - 2026-09-11
 
 ### Changed
