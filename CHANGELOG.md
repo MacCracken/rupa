@@ -5,6 +5,89 @@ All notable changes to **rupa** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-11-06 — toolchain 6.7.18, and nothing moved
+
+A patch release: **no API, no ABI, no value changed.** The pin moves 6.7.9 → 6.7.18.
+`git diff 0.2.0 -- src programs tests` is empty, and the only line of `dist/rupa.cyr` that differs
+is its `# Version:` stamp. Moving from any 0.1.x or 0.2.0 tag is a tag change.
+
+### Changed — toolchain `6.7.9` → `6.7.18`
+
+- **114 assertions** (42 motion + 72 theme) pass, and both suites print exactly what they printed on
+  6.7.9. Every build-job step of `ci.yml` passes under GitHub's `bash -e`, and **0 of 6** files move
+  under the 6.7.18 formatter, measured by formatting in place and diffing.
+- **The 6.7.10 – 6.7.18 migration notes were checked against what rupa actually uses.** They hold
+  1,554 items. rupa's source is `fn`, `var`, `enum`, `if`, `else`, `while`, integer arithmetic,
+  `load8` / `load64` / `store64`, `alloc`, `strlen`, `syscall` and string literals, with comments
+  and literals stripped: **zero** structs, tuples, floats, generics, closures, typed pointers,
+  subscripts, `for` loops or indirect calls. Setting aside items that depend on such constructs
+  leaves 442. Each of those was read by its lead and the likely ones in full, and a second pass
+  searched all 1,554 for rupa's own constructs. Its 14 hits all need something rupa does not have.
+  The near-misses, zero sites each:
+  - 6.7.12 FX-6, 6.7.14 FE-15, 6.7.15 FE-13, 6.7.16 ZN-1: a global declared twice now warns, or
+    takes the later constant from program start. No global is declared twice in a compilation unit,
+    and none shares a name with `lib/`. Each program's `var exit_code = main();` is its last
+    declaration.
+  - 6.7.16 FE-16: enum members need a separator. Every member of all three enums ends in `;`.
+  - 6.7.17 FA2-1: a statement that is only a value builtin stops compiling. The build reports none.
+  - 6.7.15 IT-5: include-once keys on spellings of 128 characters and more. rupa's longest include
+    line is 26.
+  - 6.7.11 TL-3: lint warns when a `syscall(1, fd, "…", N)` length is not the literal's. The smoke
+    passes `strlen(banner)`, lint is clean, and a planted mismatch draws the warning.
+  - 6.7.12 DW-1, 6.7.14 PL-6: the aarch64 raw-syscall warnings. `--aarch64` prints none.
+- **Output does not move.** The oracle from 0.2.0 prints the same **25,034 values** on 6.7.18 as on
+  6.7.9 and 6.6.20, on x86_64, under `CYRIUS_DCE=1`, and on aarch64 under `qemu-aarch64`. A one-bit
+  change to a token still moves it.
+- **The allocator vtable still reaches no pair-returning target.** `alloc_via` / `realloc_via` /
+  `free_via` / `reset_via` and `allocator_new` are byte-identical to 6.7.9's, and all 14 functions
+  installed through them are declared `: i64`.
+- **Both cross builds stay diagnostic-free**, and builds stay deterministic. What the pin costs:
+
+  | smoke | 6.7.9 | 6.7.18 | |
+  |---|---:|---:|---|
+  | x86_64, `CYRIUS_DCE=1` (CI's build) | 25,080 | 25,104 | +24 B |
+  | x86_64, no DCE | 107,000 | 111,120 | +4,120 B |
+  | `--agnos`, `CYRIUS_DCE=1` | 21,336 | 21,480 | +144 B |
+  | `--agnos`, no DCE | 123,736 | 132,072 | +8,336 B |
+  | `--aarch64` | 135,576 | 135,608 | +32 B |
+
+  Every pin in the range was built. The no-DCE growth lands early: 4,104 B at 6.7.10 on x86_64, and
+  4,104 B at 6.7.10 then 4,232 B at 6.7.11 on agnos. Which change caused it was not separated.
+  ⚠ The DCE shrink sadish (−17.8%) and rekha (−15.0%) measured across this move does not appear
+  here: rupa's smoke moves 8 B at each of 6.7.10, 6.7.14 and 6.7.17.
+
+### Changed — `lib/` and `cyrius.lock` re-resolved from the 6.7.18 stdlib
+
+- `rm -rf lib && cyrius deps`, as CI does: still **24 files**, each byte-equal to
+  `~/.cyrius/versions/6.7.18/lib/`. 18 changed; `alloc_agnos`, `alloc_macos`, `assert`, `atomic`,
+  `poison` and `string` did not. The tree grew from 15,550 to 16,363 lines.
+- `[deps].stdlib` unchanged. rupa has no `[deps.*]` entry, so the stdlib is all there is to update.
+- `cyrius.lock` carries the 18 new hashes and the 6.7.18 pin. It is byte-identical to one written by
+  deleting the lock and resolving clean.
+
+### Unchanged — `dist/`
+
+- `dist/rupa.deps` is byte-identical, naming `alloc` alone. `dist/rupa.cyr` differs only in its
+  `# Version:` stamp (436 lines, 23,255 B). **No new toolchain floor.**
+- jalwa (6.6.3), crab and dhancha (6.6.6) and aethersafha (6.6.11) were each built from a scratch copy
+  against this bundle at their own pin. Every binary is byte-identical to the one their current tag
+  builds, and a token planted in the bundle moved all four.
+- A scratch consumer declaring no stdlib builds and runs at 6.6.3, 6.6.6, 6.6.11, 6.6.20, 6.7.9 and
+  6.7.18.
+
+### Verified — the CI gates and the install step at 6.7.18
+
+- All 14 cases of the planted-defect replay land on the same steps under `ci.yml`'s exact `run:`
+  scripts, and both controls pass. `distlib --check` still compiles the bundle, so `ci.yml`'s comment
+  stands.
+- CI's install step, run as CI runs it from `main`'s `install.sh` into an empty `HOME`, installs
+  6.7.18, with `lib/`, `cycc`, `cyrius`, `cyrfmt` and `cyrlint` byte-equal to the store this entry
+  was measured on.
+
+### Docs
+
+- `README.md`'s `Version:` line reads `0.2.1`.
+
 ## [0.2.0] - 2026-11-06 — toolchain 6.7.9: onto cyrius's language minor, and nothing moved
 
 The pin moves 6.6.20 → 6.7.9, which takes rupa onto cyrius's 6.7 line, where the language itself
