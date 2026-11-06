@@ -5,6 +5,91 @@ All notable changes to **rupa** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-11-06 — toolchain 6.7.9: onto cyrius's language minor, and nothing moved
+
+The pin moves 6.6.20 → 6.7.9, which takes rupa onto cyrius's 6.7 line, where the language itself
+changes meaning. That move is why this is a minor, as it was for sadish 0.12.0 and rekha 1.1.0.
+**rupa's API and ABI do not change.** `git diff 0.1.9 -- src programs tests` is empty, and the only
+line of `dist/rupa.cyr` that differs is its `# Version:` stamp. Moving from any 0.1.x tag is a tag
+change.
+
+### Changed — toolchain `6.6.20` → `6.7.9`
+
+- **114 assertions** (42 motion + 72 theme) pass, and both suites print exactly what they printed on
+  6.6.20. Every build-job step of `ci.yml` passes under GitHub's `bash -e`, and **0 of 6** files move
+  under the 6.7.9 formatter, measured by formatting in place and diffing.
+- **The 6.7.0 – 6.7.9 migration notes were checked against the source, not only the build.** A build
+  catches what 6.7 refuses. It cannot catch what 6.7 compiles with a different meaning, so those
+  items were searched for in `src/`, `programs/` and `tests/tcyr/` with comments and string literals
+  stripped. Zero sites each:
+  - 6.7.3: a lone `!` was dropped by the lexer before 6.7.3 (`if (!ok)` meant `if (ok)`). **Zero**
+    `!` outside `!=`.
+  - 6.7.9: unary `-` / `~` on a constant now binds tighter than a following literal operator
+    (`-K + 10` was 15, is 5). **Zero** `~` and **zero** unary `-`: rupa spells no negation at all.
+  - 6.7.8 / 6.7.9: narrow `*T` dereference, and operator results on typed pointers. **Zero** typed
+    pointers: rupa reads through `load64` on untyped addresses.
+  - 6.7.6 / 6.7.8: `f32` writes and subscripts. **Zero** floats of any width and **zero** subscripts.
+  - 6.7.0 – 6.7.8: `trait`, `const`, `true` / `false`, `do` and `dyn` reserved, `bool` writes
+    checked. **Zero** uses, **zero** `bool` declarations.
+  - What 6.7 refuses or newly warns on (an unmatched `}` at module scope, a `for` step assigning an
+    undeclared name, forward-call arity) the build would report. It reports nothing.
+- **Output does not move, and that is measured.** A scratch oracle prints every public answer: all
+  16 getters of all four grounds, the contrast and ink choices between them, every motion role's
+  duration, ease, progress and cycle over a sweep, plain and under reduced motion, and the channel
+  helpers and luminance across the colour range. Its **25,034 values** are identical between 6.6.20 and
+  6.7.9 on x86_64, under `CYRIUS_DCE=1`, and on aarch64 under `qemu-aarch64`. That result can fail: a
+  one-bit change to a token moves it.
+- **The allocator vtable still reaches no pair-returning target.** `alloc_via` / `realloc_via` /
+  `free_via` / `reset_via` and `allocator_new` are byte-identical to 6.6.20's, and all 14 functions
+  installed through them are declared `: i64`. 6.7.6's change to `fncall8` reaches nothing here:
+  nothing in the closure calls it.
+- **Both cross builds stay diagnostic-free**, and builds stay deterministic. What the pin costs:
+
+  | smoke | 6.6.20 | 6.7.9 | |
+  |---|---:|---:|---|
+  | x86_64, `CYRIUS_DCE=1` (CI's build) | 25,072 | 25,080 | +8 B |
+  | x86_64, no DCE | 106,992 | 107,000 | +8 B |
+  | `--agnos`, `CYRIUS_DCE=1` | 21,320 | 21,336 | +16 B |
+  | `--agnos`, no DCE | 123,720 | 123,736 | +16 B |
+  | `--aarch64` | 135,576 | 135,576 | identical |
+
+### Changed — `lib/` and `cyrius.lock` re-resolved from the 6.7.9 stdlib
+
+- `rm -rf lib && cyrius deps`, as CI does: still **24 files**, each byte-equal to
+  `~/.cyrius/versions/6.7.9/lib/`. 15 changed; `alloc_cx`, `alloc_macos`, `alloc_windows`,
+  `args_agnos`, `args_macos`, `assert`, `poison`, `result` and `string` did not. The tree grew from
+  15,420 to 15,550 lines.
+- `[deps].stdlib` unchanged. rupa has no `[deps.*]` entry, so the stdlib is all there is to update.
+- `cyrius.lock` carries the 15 new hashes and the 6.7.9 pin. It is byte-identical to one written by
+  deleting the lock and resolving clean.
+- `cyrius deps --locked` is new at 6.7.6. MEASURED: on 0.1.9's lock it exits 1 with 16 named
+  differences and writes nothing; on this one it exits 0.
+- ⚠ **CI does not run it.** Its plain `cyrius deps` still rewrites a stale lock silently: a committed
+  6.6.20 lock passes the resolve step, exit 0, and leaves the tree dirty.
+
+### Unchanged — `dist/`
+
+- `dist/rupa.deps` is byte-identical, naming `alloc` alone. `dist/rupa.cyr` differs only in its
+  `# Version:` stamp (436 lines, 23,255 B). **No new toolchain floor.**
+- jalwa (6.6.3), crab and dhancha (6.6.6) and aethersafha (6.6.11) were each built from a scratch copy
+  against this bundle at their own pin. Every binary is byte-identical to the one their current tag
+  builds, and a token planted in the bundle moved all four.
+- A scratch consumer declaring no stdlib builds and runs at 6.6.3, 6.6.6, 6.6.11, 6.6.20, 6.7.9 and
+  6.7.18.
+
+### Verified — the CI gates and the install step at 6.7.9
+
+- All 14 cases of 0.1.9's planted-defect replay land on the same steps under `ci.yml`'s exact `run:`
+  scripts, and both controls pass. `distlib --check` still compiles the bundle, so `ci.yml`'s comment
+  stands.
+- CI's install step, run as CI runs it from `main`'s `install.sh` into an empty `HOME`, installs
+  6.7.9, with `lib/`, `cycc`, `cyrius`, `cyrfmt` and `cyrlint` byte-equal to the store this entry was
+  measured on.
+
+### Docs
+
+- `README.md`'s `Version:` line reads `0.2.0`.
+
 ## [0.1.9] - 2026-11-06 — toolchain 6.6.20, and a sidecar that names only what the bundle needs
 
 ### Changed — toolchain `6.6.6` → `6.6.20`
