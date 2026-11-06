@@ -7,7 +7,9 @@
 #
 # Stdlib includes live ONLY in this file — the domain modules (theme.cyr, motion.cyr)
 # are flat, which is what makes `cyrius distlib` (strip-include concatenation) produce
-# a compile-clean `dist/rupa.cyr`. Consumers of the dist supply their own stdlib.
+# a compile-clean `dist/rupa.cyr`. The bundle needs one leaf, `alloc`, which distlib
+# proves by compiling it and writes into its requires block and `dist/rupa.deps`. The
+# other includes below serve the smoke and the suites, and reach no consumer.
 
 # ================================================================
 # Standard library

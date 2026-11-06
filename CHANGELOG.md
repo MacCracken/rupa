@@ -5,6 +5,123 @@ All notable changes to **rupa** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2026-11-06 — toolchain 6.6.20, and a sidecar that names only what the bundle needs
+
+### Changed — toolchain `6.6.6` → `6.6.20`
+
+- **No code change.** The theme and motion modules and both suites are untouched; the only source
+  edit is a comment in `src/lib.cyr`. **114 assertions** (42 motion + 72 theme) pass unchanged,
+  every build-job step of `ci.yml` passes under GitHub's `bash -e`, and **0 of 6** files move under
+  the 6.6.20 formatter, measured by formatting in place and diffing.
+- **The migration notes for 6.6.7 – 6.6.20 reach no rupa code, checked item by item.** No fn is
+  defined twice within a compilation unit, and none of rupa's collides with any file in `lib/`
+  (6.6.20 binds every call to a redefined fn's LAST definition). `sizeof`, `mulh64` and
+  `fncall0`..`fncall8`, reserved at 6.6.20, have zero uses. `struct`, whose argument became a copy at
+  6.6.16, has zero declarations. `f64_le` / `f64_ge` / `f64_trunc` have zero uses and `lib/math.cyr`
+  is not in the closure (6.6.13). The 6.6.9 failure on a hidden undefined call does not fire: both
+  cross builds are clean.
+- **The allocator vtable still reaches no pair-returning target.** `alloc_via` / `realloc_via` /
+  `free_via` / `reset_via` make the same `fncallN` calls as at 6.6.6, and every function installed by
+  `allocator_new` is declared `: i64`, including the `_poison_va_*` set new at 6.6.18. `Str` stays
+  the closure's one pair-returning type, and rupa's own code declares no struct and makes no
+  indirect call.
+- **Both cross builds stay diagnostic-free**, and the aarch64 smoke runs clean under `qemu-aarch64`.
+  Builds stay deterministic: one program built twice is the same bytes.
+- ⚠ **The artifact changed.** Every pin from 6.6.6 to 6.6.20 was built to find where the bytes
+  moved:
+
+  | smoke | 6.6.6 | 6.6.20 | |
+  |---|---:|---:|---|
+  | x86_64, `CYRIUS_DCE=1` (CI's build) | 19,760 | 25,072 | +26.9 % |
+  | x86_64, no DCE | 89,392 | 106,992 | +19.7 % |
+  | `--agnos`, `CYRIUS_DCE=1` | 19,624 | 21,320 | +8.6 % |
+  | `--agnos`, no DCE | 89,256 | 123,720 | +38.6 % |
+  | `--aarch64` | 265,440 | 135,576 | −48.9 % |
+
+  Of CI's +5,312 B, **4,248 B lands at 6.6.8 and 864 B at 6.6.20**. Which half of those releases
+  caused them, compiler or stdlib, was not separated. Unreachable stdlib grew from 376 fns (66,418 B)
+  to 423 (84,688 B). aarch64 first grew to 396,816 B by 6.6.12, then fell 262,104 B at 6.6.18, the
+  release that folds ESYSXLAT at compile time. `CYRIUS_DCE=1` still does not shrink aarch64 output.
+
+### Changed — `lib/` re-resolved from the 6.6.20 stdlib
+
+- `rm -rf lib && cyrius deps`, as CI does: **23 → 24 files**, each byte-equal to
+  `~/.cyrius/versions/6.6.20/lib/`. `poison.cyr` joins, included by `alloc.cyr` only under
+  `CYRIUS_POISON`. 20 of the 23 carried files changed; `alloc_agnos`, `args_macos` and `fnptr` did
+  not. The tree grew from 11,370 to 15,420 lines.
+- ⚠ **0.1.8's note about `lib/` no longer holds as written.** At 6.6.20 a deliberately corrupted
+  `lib/fmt.cyr` does not survive `cyrius build`, which re-vendors `lib/` first and builds the same
+  binary. The conclusion stands: **the pin is the update.**
+- `[deps].stdlib` unchanged: no target needs a new module at 6.6.20.
+
+### Added — `cyrius.lock` is tracked
+
+- Since 6.6.9 `cyrius deps` writes a lock for a stdlib-only project too: 24 file hashes and the pin.
+  It is committed, as rekha's and sadish's are. A regenerated lock is byte-identical.
+- MEASURED: a changed hash in a row is refused, exit 1, by `build`, `deps` and `deps --verify`.
+- ⚠ **A lock left stale by a pin move is not refused.** An old pin row with an old hash is silently
+  rewritten by CI's `cyrius deps`, exit 0, and no CI step compares the result with what is committed.
+
+### Changed — `dist/`: the sidecar goes from 8 leaves to 1
+
+- **`dist/rupa.deps` now names only `alloc`.** Since 6.6.18 `cyrius distlib` derives a sidecar solely
+  by compiling the bundle on six targets, so the test-only and unused leaves stop reaching consumers.
+  It confirms what `[deps]` has always said: the only real need is `alloc`, for `rupa_theme_new`.
+- **`dist/rupa.cyr` opens with a compile-verified requires block**, one `include "lib/alloc.cyr"`, so
+  it compiles alone. Its code is 0.1.8's. 433 → 436 lines, 23,169 → 23,255 B.
+- ⛔ **This was not optional.** `distlib --check` reads the 0.1.8 bundle as STALE at this pin, so
+  moving the pin without regenerating fails CI.
+- **No consumer has to change, and there is no new toolchain floor.** Each one already declares all
+  eight old leaves in its own `[deps] stdlib`, and each was built from a scratch copy against this
+  bundle at its own pin. Every binary is byte-identical to the one its current tag builds. That
+  result can fail: a token planted in the bundle moved all four.
+
+  | consumer | its pin | its tag | with this bundle |
+  |---|---|---|---|
+  | jalwa | 6.6.3 | 0.1.7 | byte-identical |
+  | crab | 6.6.6 | 0.1.7 | byte-identical |
+  | dhancha | 6.6.6 | 0.1.7 | byte-identical |
+  | aethersafha | 6.6.11 | 0.1.8 | byte-identical |
+
+  A scratch consumer declaring **no** stdlib, resolving only this sidecar, builds and runs at 6.6.3,
+  6.6.6, 6.6.11, 6.6.20 and 6.7.18.
+
+### Verified — the CI gates still fail at 6.6.20
+
+A toolchain move can quiet a gate as easily as a code change, so 0.1.8's planted-defect table was
+replayed against `ci.yml`'s exact `run:` scripts under `bash -e`, one defect at a time.
+
+| planted defect | fails at |
+|---|---|
+| an untracked `TODO` | Lint |
+| a lint warning (trailing whitespace; a 150-column line) | Lint |
+| a file cyrlint fails on (unreadable: exit 1) | Lint |
+| a syntax error in `src/motion.cyr` | Lint |
+| a sidecar leaf the verify cannot prove | dist |
+| `dist/rupa.deps` missing `alloc`, committed | dist |
+| `dist/rupa.deps` deleted, committed | dist |
+| the requires block stripped from the bundle, committed | dist |
+| a stale bundle | dist |
+| the flash-band floor removed from `rupa_motion_duration` | Run smoke |
+| mudra-dark's accent `0x00E5FF` → `0x00E5FE` | Run smoke |
+
+The controls did not move: the clean tree and a `TODO` cross-referenced to a CHANGELOG entry pass
+every step. ⚠ The syntax error fails at Lint now, not Build: lint's pre-pass refuses it at this pin.
+
+CI's install step was also run as CI runs it, from `main`'s `install.sh` into an empty `HOME`: it
+installs 6.6.20, with `lib/` and `cycc` byte-equal to the store this entry was measured on.
+
+### Fixed — a CI comment 6.6.20 made false
+
+- `ci.yml` said `distlib --check` skips the bundle self-compile. That was true at 6.6.6. At 6.6.20 the
+  same syntax error in source and bundle fails `--check`. The comment now says so. The step is
+  unchanged, so plain `cyrius distlib` still runs after it.
+
+### Docs
+
+- `src/lib.cyr`: "Consumers of the dist supply their own stdlib" is replaced with what the bundle now
+  carries. `README.md`'s `Version:` line reads `0.1.9`.
+
 ## [0.1.8] - 2026-09-26 — toolchain 6.6.6, and four CI gates that could not fail
 
 ### Changed — toolchain `6.6.2` → `6.6.6`

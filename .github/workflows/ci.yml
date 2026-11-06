@@ -94,9 +94,10 @@ jobs:
         # fails when either is missing. The step it replaced ran `distlib` and then
         # `git diff --quiet dist/rupa.cyr`: it never looked at the sidecar consumers
         # resolve their stdlib from, and a deleted or untracked file has no diff.
-        # ⛔ --check SKIPS distlib's bundle self-compile, so plain `cyrius distlib` runs
-        # after it (setu's shape, 0.8.11). Keep this order: plain distlib rewrites dist/,
-        # and --check would then find nothing stale.
+        # Plain `cyrius distlib` runs after it (setu's shape, 0.8.11) because --check
+        # skipped the bundle self-compile on 6.6.6. On 6.6.20 --check compiles the bundle
+        # too (measured: the same syntax error in source and bundle fails it). Keep this
+        # order: plain distlib rewrites dist/, and --check would then find nothing stale.
         run: |
           if ! cyrius distlib --check; then
             cyrius distlib > /dev/null 2>&1 || true
